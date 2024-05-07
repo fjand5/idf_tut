@@ -12,7 +12,7 @@ void startWebserver(void)
     homeUri.method = HTTP_GET;
     homeUri.handler = [](httpd_req_t *req)
     {
-        httpd_resp_send(req, "home page", strlen("home page"));
+        httpd_resp_send(req, "home page", HTTPD_RESP_USE_STRLEN);
         return ESP_OK;
     };
 
@@ -32,14 +32,31 @@ void startWebserver(void)
                 {
                     ESP_LOGI("__WEBSERVER", "key: %s", val);
                 };
+                delete[] val;
             };
+            delete[] buf;
         }
-        httpd_resp_send(req, "query page", strlen("query page"));
+        httpd_resp_send(req, "query page", HTTPD_RESP_USE_STRLEN);
+        return ESP_OK;
+    };
+
+    httpd_uri_t bodyUri = {};
+    bodyUri.uri = "/body";
+    bodyUri.method = HTTP_POST;
+    bodyUri.handler = [](httpd_req_t *req)
+    {
+        size_t contentLenght = req->content_len + 1;
+        char *buf = new char[contentLenght]{0};
+        httpd_req_recv(req,buf,contentLenght);
+        ESP_LOGI("__WEBSERVER","buf: %s",buf);
+        httpd_resp_send(req, "ok", HTTPD_RESP_USE_STRLEN);
+
         return ESP_OK;
     };
     if (httpd_start(&handle, &config) == ESP_OK)
     {
         httpd_register_uri_handler(handle, &homeUri);
         httpd_register_uri_handler(handle, &queryUri);
+        httpd_register_uri_handler(handle, &bodyUri);
     };
 }
