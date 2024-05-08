@@ -12,7 +12,11 @@ void startWebserver(void)
     homeUri.method = HTTP_GET;
     homeUri.handler = [](httpd_req_t *req)
     {
-        httpd_resp_send(req, "home page", HTTPD_RESP_USE_STRLEN);
+        extern const char index_html_start[] asm("_binary_index_html_start");
+        extern const char index_html_end[] asm("_binary_index_html_end");
+        uint32_t length = index_html_end - index_html_start;
+        httpd_resp_set_type(req,"text/html");
+        httpd_resp_send(req, index_html_start, length);
         return ESP_OK;
     };
 
