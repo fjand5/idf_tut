@@ -2,9 +2,17 @@
 #include "webserver.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
+#include "esp_spiffs.h"
 
 void startWebserver(void)
 {
+    esp_vfs_spiffs_conf_t conf = {};
+    conf.base_path = "/store";
+    conf.format_if_mount_failed = true;
+    conf.max_files = 1;
+    conf.partition_label = NULL;
+    esp_vfs_spiffs_register(&conf);
+
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     httpd_handle_t handle;
 
@@ -40,12 +48,11 @@ void startWebserver(void)
         size_t length;
         nvs_get_str(webserverNVS, "body", NULL, &length);
 
-        char* buf = new char[length]{0};
+        char *buf = new char[length]{0};
         nvs_get_str(webserverNVS, "body", buf, &length);
 
         httpd_resp_send(req, buf, length);
         return ESP_OK;
-
 
         // size_t queryLength = httpd_req_get_url_query_len(req) + 1;
         // if (queryLength > 0)
@@ -103,10 +110,49 @@ void startWebserver(void)
 
         return ESP_OK;
     };
+
+    httpd_uri_t readUri = {};
+    readUri.uri = "/read";
+    readUri.method = HTTP_GET;
+    readUri.handler = [](httpd_req_t *req)
+    {
+        FILE *file = fopen("/store/file.txt", "r");
+
+        fseek(file, 0, SEEK_END);
+        size_t size = ftell(file) + 1;
+        fseek(file, 0, SEEK_SET);
+
+        char *buf = new char[size + 1]{0};
+        fgets(buf, size, file);
+        fclose(file);
+
+        httpd_resp_send(req, buf, size - 1);
+        delete[] buf;
+        return ESP_OK;
+    };
+    httpd_uri_t writeUri = {};
+    writeUri.uri = "/write";
+    writeUri.method = HTTP_POST;
+    writeUri.handler = [](httpd_req_t *req)
+    {
+        FILE *file = fopen("/store/file.txt", "w");
+
+        size_t contentLenght = req->content_len + 1;
+        char *buf = new char[contentLenght]{0};
+        httpd_req_recv(req, buf, contentLenght);
+
+        fprintf(file, buf);
+
+        httpd_resp_send(req, buf, contentLenght - 1);
+        fclose(file);
+        return ESP_OK;
+    };
     if (httpd_start(&handle, &config) == ESP_OK)
     {
         httpd_register_uri_handler(handle, &homeUri);
         httpd_register_uri_handler(handle, &queryUri);
         httpd_register_uri_handler(handle, &bodyUri);
+        httpd_register_uri_handler(handle, &readUri);
+        httpd_register_uri_handler(handle, &writeUri);
     };
 }
