@@ -3,7 +3,7 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "esp_spiffs.h"
-
+#define BUFFER_SIZE 1024
 void startWebserver(void)
 {
     esp_vfs_spiffs_conf_t conf = {};
@@ -119,14 +119,22 @@ void startWebserver(void)
         FILE *file = fopen("/store/file.txt", "r");
 
         fseek(file, 0, SEEK_END);
-        size_t size = ftell(file) + 1;
+        size_t size = ftell(file);
         fseek(file, 0, SEEK_SET);
 
-        char *buf = new char[size + 1]{0};
-        fgets(buf, size, file);
-        fclose(file);
+        size_t remain = size;
+        char *buf = new char[BUFFER_SIZE];
 
-        httpd_resp_send(req, buf, size - 1);
+        httpd_resp_set_type(req,"image/jpeg");
+        while (remain > 0)
+        {
+            size_t ret = fread(buf, 1, remain > BUFFER_SIZE ? BUFFER_SIZE : remain, file);
+            remain -= ret;
+            httpd_resp_send_chunk(req, buf, ret);
+        }
+
+        httpd_resp_send_chunk(req, nullptr, 0);
+        fclose(file);
         delete[] buf;
         return ESP_OK;
     };
@@ -137,14 +145,21 @@ void startWebserver(void)
     {
         FILE *file = fopen("/store/file.txt", "w");
 
-        size_t contentLenght = req->content_len + 1;
-        char *buf = new char[contentLenght]{0};
-        httpd_req_recv(req, buf, contentLenght);
+        size_t contentLenght = req->content_len;
+        size_t remain = contentLenght;
+        char *buf = new char[BUFFER_SIZE];
 
-        fprintf(file, buf);
+        while (remain > 0)
+        {
 
-        httpd_resp_send(req, buf, contentLenght - 1);
+            size_t ret = httpd_req_recv(req, buf, remain > BUFFER_SIZE ? BUFFER_SIZE : remain);
+            remain -= ret;
+            fwrite(buf, 1, ret, file);
+        }
+
+        httpd_resp_send(req, "ok", HTTPD_RESP_USE_STRLEN);
         fclose(file);
+        delete[] buf;
         return ESP_OK;
     };
     if (httpd_start(&handle, &config) == ESP_OK)
