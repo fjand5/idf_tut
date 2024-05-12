@@ -2,5 +2,12 @@
   "C_Cpp.intelliSenseEngine": "default",
   "idf.port": "/dev/cu.wchusbserial526F0042171",
   "idf.flashType": "UART",
-  "idf.adapterTargetName": "esp32"
+  "idf.adapterTargetName": "esp32",
+  "files.associations": {
+    "*.ejs": "html",
+    "*.pug": "jade",
+    "*.css": "css",
+    "*.html": "html",
+    "format": "cpp"
+  }
 }

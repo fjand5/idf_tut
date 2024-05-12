@@ -1,2 +1,2 @@
 #include "esp_http_server.h"
-void startWebserver(void);
+httpd_handle_t startWebserver(void);

@@ -4,7 +4,7 @@
 #include "nvs_flash.h"
 #include "esp_spiffs.h"
 #define BUFFER_SIZE 1024
-void startWebserver(void)
+httpd_handle_t startWebserver(void)
 {
     esp_vfs_spiffs_conf_t conf = {};
     conf.base_path = "/store";
@@ -125,7 +125,7 @@ void startWebserver(void)
         size_t remain = size;
         char *buf = new char[BUFFER_SIZE];
 
-        httpd_resp_set_type(req,"image/jpeg");
+        httpd_resp_set_type(req, "image/jpeg");
         while (remain > 0)
         {
             size_t ret = fread(buf, 1, remain > BUFFER_SIZE ? BUFFER_SIZE : remain, file);
@@ -170,4 +170,5 @@ void startWebserver(void)
         httpd_register_uri_handler(handle, &readUri);
         httpd_register_uri_handler(handle, &writeUri);
     };
+    return handle;
 }

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "wifi/include/wifi.h"
 #include "webserver/include/webserver.h"
+#include "update/include/update.h"
 
 #include "esp_log.h"
 const static char *TAG = "__main";
@@ -8,9 +9,9 @@ extern "C"
 {
     void app_main(void)
     {
-       
+
         startWifi();
-         ESP_ERROR_CHECK(esp_event_handler_instance_register(
+        ESP_ERROR_CHECK(esp_event_handler_instance_register(
             WIFI_EVENT,
             ESP_EVENT_ANY_ID,
             [](void *event_handler_arg,
@@ -20,9 +21,12 @@ extern "C"
             {
                 if (event_id == WIFI_EVENT_STA_CONNECTED)
                 {
-                    startWebserver();
+                    httpd_handle_t webserver = startWebserver();
+                    startUpdate(webserver);
                 }
             },
             NULL, NULL));
+
+            ESP_LOGW("__MAIN","Da thay doi code");
     }
 }
