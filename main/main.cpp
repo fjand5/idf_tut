@@ -27,6 +27,6 @@ extern "C"
             },
             NULL, NULL));
 
-            ESP_LOGW("__MAIN","Da thay doi code");
+            ESP_LOGW("__MAIN","Da thay doi form update");
     }
 }
