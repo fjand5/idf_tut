@@ -2,6 +2,7 @@
 #include "wifi/include/wifi.h"
 #include "webserver/include/webserver.h"
 #include "update/include/update.h"
+#include "led/include/led.h"
 
 #include "esp_log.h"
 const static char *TAG = "__main";
@@ -23,6 +24,7 @@ extern "C"
                 {
                     httpd_handle_t webserver = startWebserver();
                     startUpdate(webserver);
+                    startLed(webserver);
                 }
             },
             NULL, NULL));
