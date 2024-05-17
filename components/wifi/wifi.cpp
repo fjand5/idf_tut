@@ -13,7 +13,7 @@ void startWifi(void)
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     wifi_config_t staCfg = {};
-    strcpy((char *)staCfg.sta.ssid, "Vong Cat 3");
+    strcpy((char *)staCfg.sta.ssid, "Vong Cat-Hide");
     strcpy((char *)staCfg.sta.password, "78787878");
     staCfg.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &staCfg));

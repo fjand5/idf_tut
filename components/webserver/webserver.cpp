@@ -14,6 +14,7 @@ httpd_handle_t startWebserver(void)
     esp_vfs_spiffs_register(&conf);
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.max_uri_handlers = 16;
     httpd_handle_t handle;
 
     httpd_uri_t homeUri = {};
