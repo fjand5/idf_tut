@@ -8,6 +8,8 @@
     "*.pug": "jade",
     "*.css": "css",
     "*.html": "html",
-    "format": "cpp"
+    "format": "cpp",
+    "bitset": "cpp",
+    "algorithm": "cpp"
   }
 }
