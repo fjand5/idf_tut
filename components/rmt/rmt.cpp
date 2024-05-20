@@ -2,6 +2,11 @@
 #include "driver/rmt_rx.h"
 #include "freertos/FreeRTOS.h"
 #include "rmt.h"
+#include "esp_log.h"
+#include "nec_decode.h"
+
+#define IR_FREQ 38461
+#define IR_DURATION_US(d) uint16_t(d * 1000000ul / IR_FREQ)
 bool onReceiveDone(rmt_channel_handle_t rx_chan, const rmt_rx_done_event_data_t *edata, void *user_ctx)
 {
   QueueHandle_t rxQueue = (QueueHandle_t)user_ctx;
@@ -16,7 +21,7 @@ void startRMT(void)
   config.clk_src = RMT_CLK_SRC_REF_TICK;
   config.gpio_num = GPIO_NUM_19;
   config.mem_block_symbols = 64;
-  config.resolution_hz = 38000;
+  config.resolution_hz = IR_FREQ;
   config.intr_priority = ESP_INTR_FLAG_LEVEL1;
   ESP_ERROR_CHECK(rmt_new_rx_channel(&config, &handle));
   rmt_rx_event_callbacks_t ecb;
@@ -34,11 +39,24 @@ void startRMT(void)
   {
     rmt_receive(handle, symbols, sizeof(symbols), &rxConfig);
     xQueueReceive(rxQueue, &rxData, portMAX_DELAY);
-    if(rxData.num_symbols != 34 && rxData.num_symbols != 2) continue;
+    if (rxData.num_symbols != 34 && rxData.num_symbols != 2)
+      continue;
     for (size_t i = 0; i < rxData.num_symbols; i++)
     {
-      rmt_symbol_word_t symbol = rxData.received_symbols[i];
-      printf("%d -- %d \r\n", symbol.duration0 * 26, symbol.duration1* 26);
+      rxData.received_symbols[i].duration0 = IR_DURATION_US(rxData.received_symbols[i].duration0);
+      rxData.received_symbols[i].duration1 = IR_DURATION_US(rxData.received_symbols[i].duration1);
+    }
+    if (rxData.num_symbols == 2 &&
+        isRepeat(rxData.received_symbols[0], rxData.received_symbols[1]))
+    {
+      ESP_LOGI("__NEC", "repeat");
+    }
+    if (rxData.num_symbols == 34 &&
+        isStartSymbol(rxData.received_symbols[0]) &&
+        isStopSymbol(rxData.received_symbols[33]))
+    {
+      NECFarm necFarm = necDecode(rxData.received_symbols);
+      ESP_LOGI("__NEC","%04x -- %04x", necFarm.address, necFarm.command);
     }
   }
 }
