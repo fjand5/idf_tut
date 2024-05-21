@@ -7,16 +7,22 @@
 
 #define IR_FREQ 38461
 #define IR_DURATION_US(d) uint16_t(d * 1000000ul / IR_FREQ)
+OnReceiveData _onReceiveData;
 bool onReceiveDone(rmt_channel_handle_t rx_chan, const rmt_rx_done_event_data_t *edata, void *user_ctx)
 {
   QueueHandle_t rxQueue = (QueueHandle_t)user_ctx;
   xQueueSend(rxQueue, edata, portMAX_DELAY);
   return pdTRUE;
 }
+void setOnReceiveData(OnReceiveData onReceiveData)
+{
+  _onReceiveData = onReceiveData;
+};
+
 void startRMT(void)
 {
   static QueueHandle_t rxQueue = xQueueCreate(1, sizeof(rmt_rx_done_event_data_t));
-  rmt_rx_channel_config_t config;
+  rmt_rx_channel_config_t config = {};
   static rmt_channel_handle_t handle;
   config.clk_src = RMT_CLK_SRC_REF_TICK;
   config.gpio_num = GPIO_NUM_19;
@@ -56,7 +62,11 @@ void startRMT(void)
         isStopSymbol(rxData.received_symbols[33]))
     {
       NECFarm necFarm = necDecode(rxData.received_symbols);
-      ESP_LOGI("__NEC","%04x -- %04x", necFarm.address, necFarm.command);
+      if (_onReceiveData)
+      {
+        _onReceiveData(necFarm);
+      }
+      ESP_LOGI("__NEC", "%04x -- %04x", necFarm.address, necFarm.command);
     }
   }
 }

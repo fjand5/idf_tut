@@ -12,8 +12,21 @@ extern "C"
 {
     void app_main(void)
     {
+        setOnReceiveData([](NECFarm farm)
+                         {
+            ESP_LOGI(TAG,"addr: %04x, comand: %04x ",farm.address,farm.command);
+            if(farm.address == 0xfb04){
+                if(farm.command == 0xf708){
+                    if(getBrightness()!=255)
+                    setBrightness(255);
+                    else
+                    setBrightness(0);
 
+                }
+            } });
+        startLed(nullptr);
         startRMT();
+
         // startWifi();
         // ESP_ERROR_CHECK(esp_event_handler_instance_register(
         //     WIFI_EVENT,

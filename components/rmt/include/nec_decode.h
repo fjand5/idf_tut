@@ -1,3 +1,4 @@
+#pragma once
 #include "driver/rmt_rx.h"
 
 typedef struct {

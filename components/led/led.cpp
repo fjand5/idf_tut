@@ -2,6 +2,17 @@
 #include "cJSON.h"
 #include "led.h"
 
+void setBrightness(uint8_t brightness)
+{
+
+  ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, brightness, 2000);
+  ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_WAIT_DONE);
+};
+uint8_t getBrightness()
+{
+  return ledc_get_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+};
+
 void startLed(httpd_handle_t webserver)
 {
   ledc_timer_config_t timerConfig = {};
@@ -36,9 +47,8 @@ void startLed(httpd_handle_t webserver)
     // ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty);
     // ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
 
-    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0,duty,2000);
+    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty, 2000);
     ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_WAIT_DONE);
-
 
     httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
 
@@ -46,5 +56,6 @@ void startLed(httpd_handle_t webserver)
     cJSON_free(root);
     return ESP_OK;
   };
-  httpd_register_uri_handler(webserver, &controlLed);
+  if (webserver)
+    httpd_register_uri_handler(webserver, &controlLed);
 }
