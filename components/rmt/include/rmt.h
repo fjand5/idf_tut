@@ -1,4 +1,4 @@
 #include "nec_decode.h"
-typedef void(*OnReceiveData)(NECFarm farm);
+typedef void(*OnReceiveData)(NECFrame frame);
 void startRMT(void);
 void setOnReceiveData(OnReceiveData onReceiveData);

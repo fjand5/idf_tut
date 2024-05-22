@@ -18,9 +18,9 @@ bool logic(rmt_symbol_word_t symbol)
 {
   return CHECK_IN_RANGE(symbol.duration0, 460, 660) && CHECK_IN_RANGE(symbol.duration0 + symbol.duration1, 2150, 2350);
 };
-NECFarm necDecode(rmt_symbol_word_t *symbol)
+NECFrame necDecode(rmt_symbol_word_t *symbol)
 {
-  NECFarm ret;
+  NECFrame ret;
   ret.address = 0;
   ret.command = 0;
 

@@ -12,11 +12,11 @@ extern "C"
 {
     void app_main(void)
     {
-        setOnReceiveData([](NECFarm farm)
+        setOnReceiveData([](NECFrame frame)
                          {
-            ESP_LOGI(TAG,"addr: %04x, comand: %04x ",farm.address,farm.command);
-            if(farm.address == 0xfb04){
-                if(farm.command == 0xf708){
+            ESP_LOGI(TAG,"addr: %04x, comand: %04x ",frame.address,frame.command);
+            if(frame.address == 0xfb04){
+                if(frame.command == 0xf708){
                     if(getBrightness()!=255)
                     setBrightness(255);
                     else
@@ -24,8 +24,8 @@ extern "C"
 
                 }
             } });
-        startLed(nullptr);
         startRMT();
+        startLed(nullptr);
 
         // startWifi();
         // ESP_ERROR_CHECK(esp_event_handler_instance_register(

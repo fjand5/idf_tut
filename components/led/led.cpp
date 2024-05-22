@@ -25,7 +25,7 @@ void startLed(httpd_handle_t webserver)
 
   ledc_channel_config_t ledCConfig = {};
   ledCConfig.channel = LEDC_CHANNEL_0;
-  ledCConfig.duty = 127;
+  ledCConfig.duty = 0;
   ledCConfig.gpio_num = 4;
   ledCConfig.speed_mode = LEDC_LOW_SPEED_MODE;
   ledCConfig.timer_sel = LEDC_TIMER_0;
