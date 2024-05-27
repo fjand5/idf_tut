@@ -1,11 +1,36 @@
 #include <stdio.h>
 #include "driver/rmt_rx.h"
+#include "driver/rmt_tx.h"
 #include "freertos/FreeRTOS.h"
 #include "rmt.h"
 #include "esp_log.h"
 #include "nec_decode.h"
 #include "algorithm"
+void startRMT(void)
+{
+  rmt_channel_handle_t txChannel = nullptr;
+  ESP_ERROR_CHECK(rmt_new_tx_channel(
+      new rmt_tx_channel_config_t{
+          GPIO_NUM_17,
+          RMT_CLK_SRC_REF_TICK,
+          60000,
+          64,
+          4,
+          ESP_INTR_FLAG_LEVEL1,
+          {0, 0, 0, 0}},
+      &txChannel));
+  rmt_encoder_handle_t copyEncoder = nullptr;
+  rmt_new_copy_encoder(new rmt_copy_encoder_config_t, &copyEncoder);
+  rmt_symbol_word_t symbol;
+  symbol.level0 = 1;
+  symbol.duration0 = 1000;
 
+  symbol.level1 = 0;
+  symbol.duration1 = 30000;
+  rmt_enable(txChannel);
+  rmt_transmit(txChannel, copyEncoder, &symbol, sizeof(symbol), new rmt_transmit_config_t{-1, {0, 0}});
+}
+#if 0
 #define IR_FREQ 38461
 #define IR_DURATION_US(d) uint16_t(d * 1000000ul / IR_FREQ)
 OnReceiveData _onReceiveData;
@@ -89,3 +114,4 @@ void startRMT(void)
       },
       "__rmt_rx", 2000, nullptr, 1, nullptr);
 }
+#endif
