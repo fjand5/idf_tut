@@ -6,29 +6,106 @@
 #include "esp_log.h"
 #include "nec_decode.h"
 #include "algorithm"
+#define WS2812B_FREQ 20000000
+#define WS2812B_NS_TICK(ns) (ns / 50)
+rmt_transmit_config_t transmitConfig{0, {0, 0}};
+struct Color
+{
+  uint8_t g;
+  uint8_t r;
+  uint8_t b;
+};
+enum class Phase
+{
+  reset,
+  data
+};
+rmt_encoder_handle_t resetEncoder = nullptr;
+rmt_encoder_handle_t bytesEncoder = nullptr;
+  rmt_symbol_word_t resetSymbol;
+
+Phase phase = Phase::reset;
+Color color;
 void startRMT(void)
 {
   rmt_channel_handle_t txChannel = nullptr;
   ESP_ERROR_CHECK(rmt_new_tx_channel(
       new rmt_tx_channel_config_t{
-          GPIO_NUM_17,
-          RMT_CLK_SRC_REF_TICK,
-          60000,
+          GPIO_NUM_23,
+          RMT_CLK_SRC_APB,
+          20000000,
           64,
           4,
           ESP_INTR_FLAG_LEVEL1,
           {0, 0, 0, 0}},
       &txChannel));
-  rmt_encoder_handle_t copyEncoder = nullptr;
-  rmt_new_copy_encoder(new rmt_copy_encoder_config_t, &copyEncoder);
-  rmt_symbol_word_t symbol;
-  symbol.level0 = 1;
-  symbol.duration0 = 1000;
+  rmt_new_bytes_encoder(
+      new rmt_bytes_encoder_config_t{
+          {
+              WS2812B_NS_TICK(400),
+              1,
+              WS2812B_NS_TICK(850),
+              0,
+          },
+          {
+              WS2812B_NS_TICK(800),
+              1,
+              WS2812B_NS_TICK(450),
+              0,
+          },
+          {0}},
+      &bytesEncoder);
+  rmt_new_copy_encoder(new rmt_copy_encoder_config_t, &resetEncoder);
 
-  symbol.level1 = 0;
-  symbol.duration1 = 30000;
+  resetSymbol.level0 = 0;
+  resetSymbol.duration0 = WS2812B_NS_TICK(25000);
+
+  resetSymbol.level1 = 0;
+  resetSymbol.duration1 = WS2812B_NS_TICK(25000);
   rmt_enable(txChannel);
-  rmt_transmit(txChannel, copyEncoder, &symbol, sizeof(symbol), new rmt_transmit_config_t{-1, {0, 0}});
+  color.r=255;
+  color.g=0;
+  color.b=0;
+  rmt_tx_register_event_callbacks(
+      txChannel,
+      new rmt_tx_event_callbacks_t{
+          [](rmt_channel_handle_t tx_chan, const rmt_tx_done_event_data_t *edata, void *user_ctx)
+          {
+            switch (phase)
+            {
+            case Phase::reset:
+              rmt_transmit(tx_chan, resetEncoder, &resetSymbol, sizeof(resetSymbol), &transmitConfig);
+              phase = Phase::data;
+              break;
+            case Phase::data:
+              rmt_transmit(tx_chan, bytesEncoder, &color, sizeof(color), &transmitConfig);
+              phase = Phase::reset;
+              break;
+
+            default:
+              break;
+            }
+            return true;
+          }},
+      nullptr);
+  rmt_transmit(txChannel, resetEncoder, &resetSymbol, sizeof(resetSymbol), &transmitConfig);
+  while (1)
+  {
+    
+  color.r=255;
+  color.g=0;
+  color.b=0;
+  vTaskDelay(pdMS_TO_TICKS(555));
+  color.r=0;
+  color.g=255;
+  color.b=0;
+  vTaskDelay(pdMS_TO_TICKS(555));
+  color.r=0;
+  color.g=0;
+  color.b=255;
+  vTaskDelay(pdMS_TO_TICKS(555));
+  }
+  
 }
 #if 0
 #define IR_FREQ 38461
