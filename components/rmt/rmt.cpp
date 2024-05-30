@@ -20,25 +20,24 @@ enum class Phase
   reset,
   data
 };
-rmt_encoder_handle_t resetEncoder = nullptr;
-rmt_encoder_handle_t bytesEncoder = nullptr;
-  rmt_symbol_word_t resetSymbol;
 
 Phase phase = Phase::reset;
-Color color;
-void startRMT(void)
+Color color[8];
+rmt_encoder_handle_t ws2812BEncoder;
+
+void createWS2812BEncoder(rmt_encoder_handle_t *encoder)
 {
-  rmt_channel_handle_t txChannel = nullptr;
-  ESP_ERROR_CHECK(rmt_new_tx_channel(
-      new rmt_tx_channel_config_t{
-          GPIO_NUM_23,
-          RMT_CLK_SRC_APB,
-          20000000,
-          64,
-          4,
-          ESP_INTR_FLAG_LEVEL1,
-          {0, 0, 0, 0}},
-      &txChannel));
+  static rmt_encoder_t baseEncoder;
+  static rmt_encoder_handle_t bytesEncoder = nullptr;
+  static rmt_encoder_handle_t resetEncoder = nullptr;
+  static rmt_symbol_word_t resetSymbol;
+
+  resetSymbol.level0 = 0;
+  resetSymbol.duration0 = WS2812B_NS_TICK(25000);
+
+  resetSymbol.level1 = 0;
+  resetSymbol.duration1 = WS2812B_NS_TICK(25000);
+
   rmt_new_bytes_encoder(
       new rmt_bytes_encoder_config_t{
           {
@@ -56,56 +55,71 @@ void startRMT(void)
           {0}},
       &bytesEncoder);
   rmt_new_copy_encoder(new rmt_copy_encoder_config_t, &resetEncoder);
+  baseEncoder.encode = [](rmt_encoder_t *encoder, rmt_channel_handle_t tx_channel, const void *primary_data, size_t data_size, rmt_encode_state_t *ret_state)
+  {
+    static uint16_t count = 0;
+    count += bytesEncoder->encode(bytesEncoder, tx_channel, primary_data, data_size, ret_state);
+    if (count >= 8 * 24)
+    {
+      resetEncoder->encode(resetEncoder, tx_channel, &resetSymbol, sizeof(resetSymbol), ret_state);
+      count=0;
+    }
+    size_t ret = 0;
+    return ret;
+  };
 
-  resetSymbol.level0 = 0;
-  resetSymbol.duration0 = WS2812B_NS_TICK(25000);
+  *encoder = &baseEncoder;
+}
+void startRMT(void)
+{
+  rmt_channel_handle_t txChannel = nullptr;
+  ESP_ERROR_CHECK(rmt_new_tx_channel(
+      new rmt_tx_channel_config_t{
+          GPIO_NUM_23,
+          RMT_CLK_SRC_APB,
+          20000000,
+          64,
+          4,
+          ESP_INTR_FLAG_LEVEL1,
+          {0, 0, 0, 0}},
+      &txChannel));
 
-  resetSymbol.level1 = 0;
-  resetSymbol.duration1 = WS2812B_NS_TICK(25000);
   rmt_enable(txChannel);
-  color.r=255;
-  color.g=0;
-  color.b=0;
+
+  for (size_t i = 0; i < 8; i++)
+  {
+    color[i].r = 0;
+    color[i].g = 0;
+    color[i].b = 0;
+  }
+  createWS2812BEncoder(&ws2812BEncoder);
   rmt_tx_register_event_callbacks(
       txChannel,
       new rmt_tx_event_callbacks_t{
           [](rmt_channel_handle_t tx_chan, const rmt_tx_done_event_data_t *edata, void *user_ctx)
           {
-            switch (phase)
-            {
-            case Phase::reset:
-              rmt_transmit(tx_chan, resetEncoder, &resetSymbol, sizeof(resetSymbol), &transmitConfig);
-              phase = Phase::data;
-              break;
-            case Phase::data:
-              rmt_transmit(tx_chan, bytesEncoder, &color, sizeof(color), &transmitConfig);
-              phase = Phase::reset;
-              break;
-
-            default:
-              break;
-            }
+            rmt_transmit(tx_chan, ws2812BEncoder, color, sizeof(color), &transmitConfig);
             return true;
           }},
       nullptr);
-  rmt_transmit(txChannel, resetEncoder, &resetSymbol, sizeof(resetSymbol), &transmitConfig);
+  rmt_transmit(txChannel, ws2812BEncoder, color, sizeof(color), &transmitConfig);
+  uint16_t step = 0;
   while (1)
   {
-    
-  color.r=255;
-  color.g=0;
-  color.b=0;
-  vTaskDelay(pdMS_TO_TICKS(555));
-  color.r=0;
-  color.g=255;
-  color.b=0;
-  vTaskDelay(pdMS_TO_TICKS(555));
-  color.r=0;
-  color.g=0;
-  color.b=255;
-  vTaskDelay(pdMS_TO_TICKS(555));
+
+    for (size_t i = 0; i < 8; i++)
+    {
+      color[i].r = 0;
+      color[i].g = 0;
+      color[i].b = 0;
+      if (step % 8 == i)
+      {
+        color[i].r = 255;
+      }
+    }
+    step++;
+    vTaskDelay(pdMS_TO_TICKS(200));
   }
-  
 }
 #if 0
 #define IR_FREQ 38461
