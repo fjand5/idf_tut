@@ -6,6 +6,8 @@
 #include "esp_log.h"
 #include "nec_decode.h"
 #include "algorithm"
+#include "esp_console.h"
+#include "argtable3/argtable3.h"
 #define WS2812B_FREQ 20000000
 #define WS2812B_NS_TICK(ns) (ns / 50)
 rmt_transmit_config_t transmitConfig{0, {0, 0}};
@@ -52,7 +54,7 @@ void createWS2812BEncoder(rmt_encoder_handle_t *encoder)
               WS2812B_NS_TICK(450),
               0,
           },
-          {0}},
+          {1}},
       &bytesEncoder);
   rmt_new_copy_encoder(new rmt_copy_encoder_config_t, &resetEncoder);
   baseEncoder.encode = [](rmt_encoder_t *encoder, rmt_channel_handle_t tx_channel, const void *primary_data, size_t data_size, rmt_encode_state_t *ret_state)
@@ -62,7 +64,7 @@ void createWS2812BEncoder(rmt_encoder_handle_t *encoder)
     if (count >= 8 * 24)
     {
       resetEncoder->encode(resetEncoder, tx_channel, &resetSymbol, sizeof(resetSymbol), ret_state);
-      count=0;
+      count = 0;
     }
     size_t ret = 0;
     return ret;
@@ -104,22 +106,59 @@ void startRMT(void)
       nullptr);
   rmt_transmit(txChannel, ws2812BEncoder, color, sizeof(color), &transmitConfig);
   uint16_t step = 0;
-  while (1)
-  {
+  esp_console_repl_config_t replConfig = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
+  esp_console_dev_uart_config_t uartConfig = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
+  esp_console_repl_t *repl = nullptr;
+  esp_console_new_repl_uart(&uartConfig, &replConfig, &repl);
+  esp_console_start_repl(repl);
 
-    for (size_t i = 0; i < 8; i++)
-    {
-      color[i].r = 0;
-      color[i].g = 0;
-      color[i].b = 0;
-      if (step % 8 == i)
-      {
-        color[i].r = 255;
-      }
-    }
-    step++;
-    vTaskDelay(pdMS_TO_TICKS(200));
-  }
+  struct ColorCMD
+  {
+    struct arg_int *index;
+    struct arg_int *red;
+    struct arg_int *green;
+    struct arg_int *blue;
+    struct arg_end *end;
+  };
+  static ColorCMD colorCMD;
+  colorCMD.index = arg_intn("i", "index", "<int>", 1, 1, "index cua led");
+  colorCMD.red = arg_intn("r", "red", "<int>", 1, 1, "mau do");
+  colorCMD.green = arg_intn("g", "green", "<int>", 1, 1, "xanh la");
+  colorCMD.blue = arg_intn("b", "blue", "<int>", 1, 1, "xanh  duong");
+  colorCMD.end = arg_end(4);
+  esp_console_cmd_t rmtCMD;
+  rmtCMD.command = "setcolor";
+  rmtCMD.func = [](int argc, char **argv)
+  {
+    arg_parse(argc, argv, (void **)&colorCMD);
+    ESP_LOGI("RMT", "%d %d %d %d", colorCMD.index->ival[0], colorCMD.red->ival[0], colorCMD.green->ival[0], colorCMD.blue->ival[0]);
+
+    color[colorCMD.index->ival[0]].r = colorCMD.red->ival[0];
+    color[colorCMD.index->ival[0]].g = colorCMD.green->ival[0];
+    color[colorCMD.index->ival[0]].b = colorCMD.blue->ival[0];
+    return 0;
+  };
+  rmtCMD.help = "cai dat mau cho led";
+  rmtCMD.argtable = &colorCMD;
+
+  esp_console_cmd_register(&rmtCMD);
+
+  // while (1)
+  // {
+
+  //   for (size_t i = 0; i < 8; i++)
+  //   {
+  //     color[i].r = 0;
+  //     color[i].g = 0;
+  //     color[i].b = 0;
+  //     if (step % 8 == i)
+  //     {
+  //       color[i].r = 255;
+  //     }
+  //   }
+  //   step++;
+  //   vTaskDelay(pdMS_TO_TICKS(200));
+  // }
 }
 #if 0
 #define IR_FREQ 38461
