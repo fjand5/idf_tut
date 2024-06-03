@@ -3,6 +3,7 @@
 #include "webserver/include/webserver.h"
 #include "update/include/update.h"
 #include "dac/include/dac.h"
+#include "bluetooth/include/bluetooth.h"
 #include "remote_command/remote_command.h"
 
 #include "esp_log.h"
@@ -11,7 +12,7 @@ extern "C"
 {
     void app_main(void)
     {
-        startRMT();
+        startBluetooth();
 
         // startWifi();
         // ESP_ERROR_CHECK(esp_event_handler_instance_register(
